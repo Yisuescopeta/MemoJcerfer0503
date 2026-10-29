@@ -104,3 +104,16 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# IDE and editor workspace settings
+.idea/
+.vscode/
+.vs/
+
+# Local backup of an old GameManager implementation
+/Assets/Scripts/copiaAnteriorGameManager.txt
+/Assets/Scripts/copiaAnteriorGameManager.txt.meta
+
+# Operating system files
+.DS_Store
+Thumbs.db
