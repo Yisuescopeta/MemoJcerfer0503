@@ -1,2 +1,2 @@
-# tictactoe
-Unity basic project for 2D Tic-Tac-Toe
+# Memo
+juego de memoria básico como actividad de clase
