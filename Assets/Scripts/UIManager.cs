@@ -6,13 +6,14 @@ using UnityEngine;
 public class UIManager : MonoBehaviour
 {
     
-    //[SerializeField] private BoardCell[] boardsCell;
+    // textos de la pantalla
 
     [SerializeField] private TextMeshProUGUI statusText;
     [SerializeField] private TextMeshProUGUI puntuacion1Text;
     [SerializeField] private TextMeshProUGUI puntuacion2Text;
     
     
+    // empieza una partida al abrir el juego
     void Start()
     {
         
@@ -20,7 +21,7 @@ public class UIManager : MonoBehaviour
         
     }
     
-    // Gestión del click sobre el botón de RESET
+    // reinicia la partida al pulsar el botón
     public void OnClickReset()
     {
        
@@ -30,25 +31,50 @@ public class UIManager : MonoBehaviour
 
     
     
+    // activa el modo contrarreloj y empieza de nuevo
+    public void OnClickContrarreloj()
+    {
+        GameManager.Instance.Contrarreloj = true;
+        Reset();
+    }
+
+    // activa el modo de dos jugadores y empieza de nuevo
+    public void OnClickDosJugadores()
+    {
+        GameManager.Instance.Contrarreloj = false;
+        Reset();
+    }
+
     private void Reset()
     {
-        // Limpia el Tablero (modelo)
+        // empieza una partida nueva
         GameManager.Instance.StartNewGame();
         
-        // Actualiza la interface de usuario
+        // actualiza los textos
         UpdateUI();
     }
 
+    // muestra los puntos y el estado de la partida
     public void UpdateUI()
     {
+        // muestra el tiempo que queda o el resultado final
+        if (GameManager.Instance.Contrarreloj)
+        {
+            puntuacion1Text.text = "Puntuación: " + GameManager.Instance.PuntuacionJugador1;
+            puntuacion2Text.text = "Puntuación: " + GameManager.Instance.PuntuacionJugador2;
+            statusText.text = GameManager.Instance.IsGameOver
+                ? (GameManager.Instance.Winner == Player.Player1 ? "¡Has ganado!" : "¡Tiempo agotado!")
+                : $"Tiempo: {Mathf.CeilToInt(GameManager.Instance.TiempoRestante)} s";
+            return;
+        }
         
         
-        // Actualiza el texto de estado
+        // muestra el resultado si la partida ha acabado
         if (GameManager.Instance.IsGameOver)
         {
             puntuacion1Text.text = "Puntuación: " +  GameManager.Instance.PuntuacionJugador1;
             puntuacion2Text.text = "Puntuación: " +  GameManager.Instance.PuntuacionJugador2;
-            // poner ganador o empate
+            // compara los puntos para mostrar el ganador o el empate
             if (GameManager.Instance.PuntuacionJugador1 == GameManager.Instance.PuntuacionJugador2)
             {
                 statusText.text = "¡ Empate !";
@@ -64,14 +90,15 @@ public class UIManager : MonoBehaviour
         }
         else
         {
-            // informar puntuaciones
+            // muestra los puntos de cada jugador
             puntuacion1Text.text = "Puntuación: " +  GameManager.Instance.PuntuacionJugador1;
             puntuacion2Text.text = "Puntuación: " +  GameManager.Instance.PuntuacionJugador2;
-            // informar del turno actual
-            statusText.text = $"Turno actual: {GameManager.Instance.CurrentTurn}";
+            // muestra a quién le toca jugar
+            statusText.text = $"Turno actual: jugador {(int)GameManager.Instance.CurrentTurn}";
         }
     }
 
+    // actualiza los textos durante la partida
     private void Update()
     {
         UpdateUI();

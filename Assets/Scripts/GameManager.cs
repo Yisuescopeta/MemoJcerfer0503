@@ -1,8 +1,9 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public enum CellState { Empty, X, O }
+public enum Player { None, Player1, Player2 }
 
 
 public class GameManager : MonoBehaviour
@@ -10,35 +11,41 @@ public class GameManager : MonoBehaviour
 {
     
     
+    // ajustes de las cartas y del tiempo
     [SerializeField] private GameObject cellsContainer;
     [SerializeField] private GameObject cellPrefab;
     [SerializeField, Min(2)] private int numeroCartas = 6;
-    public CellState[,] Board { get; private set; } = new CellState[2, 3];
+    [SerializeField, Min(1)] private float duracionContrarreloj = 60f;
+    public bool Contrarreloj { get; set; }
+    public float TiempoRestante { get; private set; }
+    // guarda qué cartas están descubiertas
+    public bool[,] Board { get; private set; } = new bool[2, 3];
     
     public int PuntuacionJugador1 { get; private set; } = 0;
     
     public int PuntuacionJugador2 { get; private set; } = 0;
     public static int ultimoValor { get; private set; } = 0;
     
-    public CellState CurrentTurn { get; private set; } = CellState.X;
-    private bool CambioTurno { get; set; } = true;
+    public Player CurrentTurn { get; private set; } = Player.Player1;
+    private bool esperandoPrimeraCarta = true;
     private bool comprobandoPareja;
     private BoardCell[] cells;
     
     public bool IsGameOver { get; private set; }
-    public CellState Winner { get; private set; } = CellState.Empty;
+    public Player Winner { get; private set; } = Player.None;
     
+    // posiciones de las dos últimas cartas elegidas
     public int row1, col1, row2, col2;
     
     
     
-    // Singleton
+    // permite usar este controlador desde otros scripts
     
     public static GameManager Instance { get; private set;  }
 
     public void Awake(){
         
-        // verificar si la instancia existe :)
+        // guarda este controlador si todavía no hay uno
         if (Instance == null)
         {
             Instance = this;
@@ -46,90 +53,196 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            // y si existe una istancia previa, eliminar este objeto
+            // borra este objeto si ya hay otro controlador
             Destroy(gameObject);
         }
     }
 
+    // baja el tiempo y acaba la partida al llegar a cero
+    private void Update()
+    {
+        if (!Contrarreloj || IsGameOver) return;
+
+        TiempoRestante = Mathf.Max(0f, TiempoRestante - Time.deltaTime);
+        if (TiempoRestante > 0f) return;
+
+        IsGameOver = true;
+        StopAllCoroutines();
+        comprobandoPareja = false;
+    }
+
+    // prepara las cartas para la partida
     private void ResetImages()
     {
-        if (cellsContainer && cellPrefab)
+        if (!cellsContainer || !cellPrefab)
         {
-            if (cells == null || cells.Length != numeroCartas)
-            {
-                if (cells != null)
-                {
-                    foreach (BoardCell previousCell in cells)
-                    {
-                        previousCell.gameObject.SetActive(false);
-                        Destroy(previousCell.gameObject);
-                    }
-                }
-                cells = new BoardCell[numeroCartas];
-                for (int i = 0; i < cells.Length; i++)
-                {
-                    GameObject cell = Instantiate(cellPrefab, cellsContainer.transform);
-                    cells[i] = cell.GetComponent<BoardCell>();
-                    cells[i].row = i / Board.GetLength(1);
-                    cells[i].col = i % Board.GetLength(1);
-                }
-            }
+            return;
+        }
 
-            int[] valores = new int[numeroCartas];
-            for (int i = 0; i < valores.Length; i++)
-                valores[i] = i / 2;
-            for (int i = valores.Length - 1; i > 0; i--)
+        if (cells == null || cells.Length != numeroCartas)
+        {
+            CrearCartas();
+        }
+
+        RepartirCartas();
+        AjustarTablero();
+    }
+
+    // borra las cartas anteriores y crea las nuevas
+    private void CrearCartas()
+    {
+        if (cells != null)
+        {
+            foreach (BoardCell carta in cells)
             {
-                int j = Random.Range(0, i + 1);
-                int temporal = valores[i];
-                valores[i] = valores[j];
-                valores[j] = temporal;
+                carta.gameObject.SetActive(false);
+                Destroy(carta.gameObject);
             }
-            for (int i = 0; i < cells.Length; i++)
+        }
+
+        cells = new BoardCell[numeroCartas];
+        int indice = 0;
+
+        // coloca cada carta en su fila y columna
+        for (int fila = 0; fila < Board.GetLength(0); fila++)
+        {
+            for (int columna = 0; columna < Board.GetLength(1); columna++)
             {
-                cells[i].valor = valores[i];
-                cells[i].Refresh();
+                GameObject objetoCarta = Instantiate(cellPrefab, cellsContainer.transform);
+                BoardCell carta = objetoCarta.GetComponent<BoardCell>();
+                carta.row = fila;
+                carta.col = columna;
+                cells[indice] = carta;
+                indice++;
             }
-            AjustarTablero();
         }
     }
 
+    // prepara las parejas y reparte sus valores al azar
+    private void RepartirCartas()
+    {
+        List<int> valores = new List<int>();
+        int numeroParejas = numeroCartas / 2;
+
+        // añade dos cartas con el mismo valor
+        for (int pareja = 0; pareja < numeroParejas; pareja++)
+        {
+            valores.Add(pareja);
+            valores.Add(pareja);
+        }
+
+        // elige un valor al azar y lo quita de la lista
+        foreach (BoardCell carta in cells)
+        {
+            int posicion = Random.Range(0, valores.Count);
+            carta.valor = valores[posicion];
+            valores.RemoveAt(posicion);
+            carta.Refresh();
+        }
+    }
+
+    // ajusta el tamaño de las cartas al espacio del tablero
     private void AjustarTablero()
     {
         GridLayoutGroup grid = cellsContainer.GetComponent<GridLayoutGroup>();
-        if (grid == null) return;
+        if (grid == null)
+        {
+            return;
+        }
 
+        // actualiza el tablero antes de medirlo
         Canvas.ForceUpdateCanvases();
         Rect area = ((RectTransform)cellsContainer.transform).rect;
         int filas = Board.GetLength(0);
         int columnas = Board.GetLength(1);
-        float ancho = (area.width - grid.padding.horizontal - grid.spacing.x * (columnas - 1)) / columnas;
-        float alto = (area.height - grid.padding.vertical - grid.spacing.y * (filas - 1)) / filas;
-        float lado = Mathf.Max(1f, Mathf.Min(ancho, alto));
+
+        // resta los bordes y los huecos entre las cartas
+        float anchoDisponible = area.width - grid.padding.horizontal;
+        float altoDisponible = area.height - grid.padding.vertical;
+        anchoDisponible -= grid.spacing.x * (columnas - 1);
+        altoDisponible -= grid.spacing.y * (filas - 1);
+
+        float anchoCarta = anchoDisponible / columnas;
+        float altoCarta = altoDisponible / filas;
+        // usa el lado más pequeño para que las cartas sean cuadradas
+        float lado = Mathf.Min(anchoCarta, altoCarta);
+        if (lado < 1f)
+        {
+            lado = 1f;
+        }
+
         grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
         grid.constraintCount = columnas;
         grid.cellSize = new Vector2(lado, lado);
     }
 
+    // revisa el número de cartas al cambiarlo en el editor
     private void OnValidate()
     {
-        numeroCartas = Mathf.Max(2, numeroCartas);
-        if (numeroCartas % 2 != 0) numeroCartas++;
+        ValidarNumeroCartas();
     }
 
-    // Intenta realizar una jugada en la posición (row, col)
+    // deja un mínimo de dos cartas y una cantidad par
+    private void ValidarNumeroCartas()
+    {
+        if (numeroCartas < 2)
+        {
+            numeroCartas = 2;
+        }
+
+        if (numeroCartas % 2 != 0)
+        {
+            numeroCartas++;
+        }
+    }
+
+    // calcula las filas y columnas del tablero
+    private void CrearTablero()
+    {
+        int filas = 1;
+
+        // busca el divisor que deja el tablero más cuadrado
+        for (int divisor = 2; divisor * divisor <= numeroCartas; divisor++)
+        {
+            if (numeroCartas % divisor == 0)
+            {
+                filas = divisor;
+            }
+        }
+
+        int columnas = numeroCartas / filas;
+        Board = new bool[filas, columnas];
+    }
+
+    // comprueba el clic y guarda la carta elegida
     public bool PlayMove(int row, int col, int valor)
     {
         
-        // comprobar si el juego terminó o la casilla ya está ocupada
-        if (IsGameOver || comprobandoPareja ||
-            row < 0 || row >= Board.GetLength(0) ||
-            col < 0 || col >= Board.GetLength(1) ||
-            Board[row, col] != CellState.Empty)
+        // bloquea los clics si la partida ha acabado o hay dos cartas esperando
+        if (IsGameOver || comprobandoPareja)
+        {
             return false;
+        }
 
-        // Registrar la jugada
-        Board[row, col] = CurrentTurn;
+        // comprueba que la posición está dentro del tablero
+        if (row < 0 || row >= Board.GetLength(0))
+        {
+            return false;
+        }
+
+        if (col < 0 || col >= Board.GetLength(1))
+        {
+            return false;
+        }
+
+        // no deja elegir una carta que ya está descubierta
+        if (Board[row, col])
+        {
+            return false;
+        }
+
+        // descubre la carta y guarda su posición
+        Board[row, col] = true;
         
         row2 = row1;
         col2 = col1;
@@ -137,45 +250,61 @@ public class GameManager : MonoBehaviour
         col1 = col;
         
         
-        if (CambioTurno)
+        // guarda el valor de la primera carta para compararlo con la siguiente
+        if (esperandoPrimeraCarta)
         {
             ultimoValor = valor;
-            CambioTurno = false;
+            esperandoPrimeraCarta = false;
+            return true;
         }
-        else if (ultimoValor != valor)
+
+        // si son distintas espera antes de taparlas
+        if (ultimoValor != valor)
         {
             comprobandoPareja = true;
             StartCoroutine(OcultarPareja(valor));
+            return true;
         }
-        else
+
+        // suma el punto si las cartas coinciden
+        CheckPoint(ultimoValor, valor);
+        esperandoPrimeraCarta = true;
+
+        // termina la partida y elige al ganador si ya están todas descubiertas
+        if (IsBoardFull())
         {
-            CheckPoint(ultimoValor, valor);
-            CambioTurno = true;
-            if (CheckWin(row, col))
+            IsGameOver = true;
+            if (PuntuacionJugador1 > PuntuacionJugador2)
             {
-                IsGameOver = true;
-                Winner = PuntuacionJugador1 == PuntuacionJugador2 ? CellState.Empty :
-                    (PuntuacionJugador1 > PuntuacionJugador2 ? CellState.X : CellState.O);
+                Winner = Player.Player1;
+            }
+            else if (PuntuacionJugador2 > PuntuacionJugador1)
+            {
+                Winner = Player.Player2;
+            }
+            else
+            {
+                Winner = Player.None;
             }
         }
 
         return true;
     }
 
+    // reinicia el tiempo, los puntos y las cartas
     public void StartNewGame()
     {
         StopAllCoroutines();
-        OnValidate();
-        int filas = Mathf.FloorToInt(Mathf.Sqrt(numeroCartas));
-        while (numeroCartas % filas != 0) filas--;
-        Board = new CellState[filas, numeroCartas / filas];
-        CurrentTurn = CellState.X;
+        ValidarNumeroCartas();
+        TiempoRestante = Mathf.Max(1f, duracionContrarreloj);
+        CrearTablero();
+        CurrentTurn = Player.Player1;
         IsGameOver = false;
-        Winner = CellState.Empty;
+        Winner = Player.None;
         PuntuacionJugador1 = 0;
         PuntuacionJugador2 = 0;
         ultimoValor = 0;
-        CambioTurno = true;
+        esperandoPrimeraCarta = true;
         comprobandoPareja = false;
         row1 = col1 = row2 = col2 = 0;
         ResetImages();
@@ -184,64 +313,67 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator OcultarPareja(int valor)
     {
-        // Dejar ver las dos cartas antes de ocultarlas y cambiar el turno.
+        // deja ver las dos cartas durante un segundo
         yield return new WaitForSeconds(1f);
         CheckPoint(ultimoValor, valor);
-        CurrentTurn = CurrentTurn == CellState.X ? CellState.O : CellState.X;
-        CambioTurno = true;
+        // cambia de jugador solo en el modo de dos jugadores
+        if (!Contrarreloj)
+        {
+            if (CurrentTurn == Player.Player1)
+            {
+                CurrentTurn = Player.Player2;
+            }
+            else
+            {
+                CurrentTurn = Player.Player1;
+            }
+        }
+        esperandoPrimeraCarta = true;
         comprobandoPareja = false;
     }
 
     private bool IsBoardFull()
     {
-        // Recorrer el tablero en busca de una casilla vacía (CellState.Empty)
-        foreach (CellState cell in Board)
+        // comprueba si quedan cartas por descubrir
+        foreach (bool cell in Board)
         {
-            if (cell == CellState.Empty)
+            if (!cell)
                 return false;
         }
         return true;
     }
 
-    public bool CheckWin(int row, int col)
-    {
         /*
-        // Comprobar la fila en la que estoy
+        // comprueba la fila
         if (Board[row, 0] == CurrentTurn && Board[row, 1] == CurrentTurn && Board[row, 2] == CurrentTurn)
             return true;
         
-        // Comprobar la columna en la que estoy
+        // comprueba la columna
         if (Board[0, col] == CurrentTurn && Board[1, col] == CurrentTurn && Board[2, col] == CurrentTurn)
             return true;
         
-        // Comprobar la diagonal principal
+        // comprueba la diagonal principal
         if (Board[0, 0] == CurrentTurn && Board[1, 1] == CurrentTurn && Board[2, 2] == CurrentTurn)
             return true;
         
-        // Comprobar la diagonal secundaria
+        // comprueba la diagonal secundaria
         if (Board[0, 2] == CurrentTurn && Board[1, 1] == CurrentTurn && Board[2, 0] == CurrentTurn)
             return true;
         
         return false;
         */
-        if (IsBoardFull())
-        {
-            return true;
-        }
-        return false;
-    }
 
     public bool CheckPoint(int valor1, int valor2)
     {
-        //la idea es pasarle los dos movimientos que ha hecho el jugador para verificar si ha ganado un punto
+        // suma un punto al jugador si las cartas son iguales
 
         if (valor1 == valor2)
         {
-            if (CurrentTurn == CellState.X)
+            if (CurrentTurn == Player.Player1)
             {
                 PuntuacionJugador1++;
             }
-            if (CurrentTurn == CellState.O)
+            if (CurrentTurn == Player.Player2)
             {
                 PuntuacionJugador2++;
             }
@@ -251,8 +383,9 @@ public class GameManager : MonoBehaviour
             return true;
         }
         
-        Board[row1, col1] = CellState.Empty;
-        Board[row2, col2] = CellState.Empty;
+        // tapa las dos cartas si son distintas
+        Board[row1, col1] = false;
+        Board[row2, col2] = false;
         
 
         

@@ -166,7 +166,7 @@ RectTransform:
   m_GameObject: {fileID: 1971571938744365238}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.8, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4921230709312908120}
@@ -286,10 +286,6 @@ MonoBehaviour:
   row: 0
   col: 0
   valor: 0
-  visible: 0
-  cellText: {fileID: 2217898286988311062}
-  imagenX: {fileID: -2327280944313931107, guid: ffeb0b0ec61f36f4cb7947f7204e6849, type: 3}
-  imagenO: {fileID: -2327280944313931107, guid: ffeb0b0ec61f36f4cb7947f7204e6849, type: 3}
   imagenes:
   - {fileID: -1884975526409391646, guid: 70e8e891ae88cbc47b3206cb9f5fe29b, type: 3}
   - {fileID: 8450507121130544758, guid: 7cc8abe73ff50e84b9d52a99042b30bc, type: 3}

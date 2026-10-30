@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
+// código del rival del tres en raya que está desactivado
 /*
 
 public class SystemWOPR : MonoBehaviour
@@ -27,7 +28,7 @@ public class SystemWOPR : MonoBehaviour
 
    public void Move(CellState piece)
    {
-      // Buscar jugadas ganadoras
+      // busca una jugada para ganar
       CellState[,] BoardIA = GameManager.Instance.Board.Clone() as CellState[,]; 
       int i = 0;
       foreach (CellState cellState in BoardIA)
@@ -40,7 +41,7 @@ public class SystemWOPR : MonoBehaviour
          }
          i++;
       }
-      // Evitar jugadas ganadoras del rival
+      // busca una jugada para bloquear al rival
       CellState human = (piece == CellState.O ? CellState.X : CellState.O);
       i = 0;
       foreach (CellState cellState in BoardIA)
@@ -52,53 +53,53 @@ public class SystemWOPR : MonoBehaviour
          }
          i++;
       }
-      // Casilla central
+      // intenta jugar en el centro
       if (GameManager.Instance.Board[1, 1] == CellState.Empty)
       {
          GameManager.Instance.PlayMove(1, 1);
          return;
       }
-      // Casillas de esquina
+      // intenta jugar en una esquina
       (int r, int c)[] rc = new (int, int)[] { (0, 0), (0, 2), (2, 0), (2, 2) };
       List<(int, int)> celdas = new List<(int, int)>(rc);
       for (int j = 0; j < celdas.Count; j++)
       {
-         // aleatorio entre 0 y la longitud del array de celdas
+         // elige una casilla al azar
          int r = Random.Range(0, celdas.Count);
          if (GameManager.Instance.Board[celdas[r].Item1, celdas[r].Item2] == CellState.Empty)
          {
             GameManager.Instance.PlayMove(celdas[r].Item1, celdas[r].Item2);
             return;
          }
-         // elimina la celda ocupa de la lista de posibles
+         // quita la casilla ocupada de la lista
          celdas.RemoveAt(r);
       }
-      // Resto de casillas
+      // prueba las casillas que quedan
       rc = new (int, int)[] { (0, 1), (1, 0), (1, 2), (2, 1) };
       celdas = new List<(int, int)>(rc);
       for (int j = 0; j < celdas.Count; j++)
       {
-         // aleatorio entre 0 y la longitud del array de celdas
+         // elige una casilla al azar
          int r = Random.Range(0, celdas.Count);
          if (GameManager.Instance.Board[celdas[r].Item1, celdas[r].Item2] == CellState.Empty)
          {
             GameManager.Instance.PlayMove(celdas[r].Item1, celdas[r].Item2);
             return;
          }
-         // elimina la celda ocupa de la lista de posibles
+         // quita la casilla ocupada de la lista
          celdas.RemoveAt(r);
       }
    }
 
    private bool TryMove(CellState[,] board, int r, int c, CellState piece)
    {
-      // simulo la colocación de la pieza en r, c, si la casilla está libre
+      // prueba la jugada si la casilla está libre
       if (board[r, c] == CellState.Empty)
       {
          board[r, c] = piece;
-         // comprobar si es jugada ganadora
+         // comprueba si gana con esa jugada
          bool resultado = CheckWin(board, r, c, piece);
-         // vuelta atrás de la jugada
+         // deja la casilla como estaba
          board[r, c] = CellState.Empty;
          return resultado;
       }
@@ -108,19 +109,19 @@ public class SystemWOPR : MonoBehaviour
    
    private bool CheckWin(CellState[,] board, int row, int col, CellState piece)
    {
-      // Comprobar la fila en la que estoy
+      // comprueba la fila
       if (board[row, 0] == piece && board[row, 1] == piece && board[row, 2] == piece)
          return true;
         
-      // Comprobar la columna en la que estoy
+      // comprueba la columna
       if (board[0, col] == piece && board[1, col] == piece && board[2, col] == piece)
          return true;
         
-      // Comprobar la diagonal principal
+      // comprueba la diagonal principal
       if (board[0, 0] == piece && board[1, 1] == piece && board[2, 2] == piece)
          return true;
         
-      // Comprobar la diagonal secundaria
+      // comprueba la diagonal secundaria
       if (board[0, 2] == piece && board[1, 1] == piece && board[2, 0] == piece)
          return true;
         

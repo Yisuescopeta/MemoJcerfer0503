@@ -1,16 +1,14 @@
-using System;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class BoardCell : MonoBehaviour
 {
+    // fila, columna y valor de la carta
     [SerializeField] public int row;
     [SerializeField] public int col;
     [SerializeField] public int valor = -1;
      
     
-    [SerializeField] private TextMeshProUGUI cellText;
 
     
 
@@ -18,10 +16,12 @@ public class BoardCell : MonoBehaviour
         
     private Image _image;
     
+    // imágenes de las parejas
     [SerializeField] private Sprite[] imagenes;
     
     
 
+    // guarda la imagen de la carta y su reverso
     private void Awake()
     {
         
@@ -29,7 +29,7 @@ public class BoardCell : MonoBehaviour
         _spriteDefault = _image.sprite;
         
     }
-    // respuesta al onClick
+    // intenta jugar la carta al pulsarla
     
     
     public void OnClick()
@@ -40,7 +40,7 @@ public class BoardCell : MonoBehaviour
             return;
         } 
         
-        // Mostrar el valor solo si la jugada se ha aceptado.
+        // muestra la carta si el clic se acepta
         if (GameManager.Instance.PlayMove(row, col, valor))
         {
            
@@ -49,17 +49,13 @@ public class BoardCell : MonoBehaviour
     }
         
 
+    // muestra la imagen de la carta o su reverso
     public void Refresh()
     {
-        CellState state = GameManager.Instance.Board[row, col];
+        bool descubierta = GameManager.Instance.Board[row, col];
         
         
-        if (state == CellState.X)
-        {
-            
-            _image.sprite = imagenes[valor]; 
-        }
-        else if (state == CellState.O)
+        if (descubierta)
         {
             _image.sprite = imagenes[valor];
         }
@@ -68,9 +64,9 @@ public class BoardCell : MonoBehaviour
             _image.sprite = _spriteDefault;
         }
         
-        //cellText.text = (state == CellState.Empty) ? "" : state.ToString();
     }
     
+    // actualiza la imagen de la carta
     private void Update()
     {
         Refresh();
